@@ -4,6 +4,7 @@ import re
 import pickle
 import argparse
 import ujson as json
+import time
 
 import pandas as pd
 from pprint import pprint
@@ -169,8 +170,10 @@ def main():
     output_fname = args.output_fname
     verbose = args.verbose
 
-    if verbose: print("* Fetching guides")
+    if verbose:
+        print("* Fetching guides")
 
+    start = time.time()
     guides = {}
     for record in SeqIO.parse(input_fname, "fasta"):
         seq = str(record.seq)
@@ -178,15 +181,38 @@ def main():
             guide = rc(seq[idx: idx + GUIDELENGTH].lower())
             if not include_guide(guide): continue
             guides[guide] = {"guide": guide, "pos": idx + 1, "flank": rc(guide)}
+    end = time.time()
 
-    if verbose: print("* Extracting features")
+    if verbose:
+        print(f"Time: {end - start} seconds")
+        print("* Extracting features")
+        print("** Extracting MFE")
 
+    start = time.time()
     guides = update_MFE(guides)
+    end = time.time()
+
+    if verbose:
+        print(f"Time: {end - start} seconds")
+        print("** Extracting hybridization energies")
+
+    start = time.time()
     guides = update_hybridization_energies(guides)
+    end = time.time()
+
+    if verbose:
+        print(f"Time: {end - start} seconds")
+        print("** Extracting nucleotide string features")
+
+    start = time.time()
     guides = update_nucleotide_features(guides)
+    end = time.time()
 
-    if verbose: print("* Loading model")
+    if verbose:
+        print(f"Time: {end - start} seconds")
+        print("* Loading model")
 
+    start = time.time()
     guide_seqs = guides.keys()
 
     data = pd.DataFrame.from_dict([guides[guide] for guide in guide_seqs])
@@ -195,15 +221,23 @@ def main():
 
     scaler = pickle.load(open("models/scaler.pkl", "rb" ))
     model = pickle.load(open("models/svm.pkl", "rb" ))
+    end = time.time()
 
-    if verbose: print("* Predicting scores")
+    if verbose:
+        print(f"Time: {end - start} seconds")
+        print("* Predicting scores")
 
+    start = time.time()
     X = scaler.transform(X)
     y = model.predict(X)
 
     output = {rc(guide):score for guide, score in zip(guide_seqs, y)}
 
     to_json(output_fname, output)
+    end = time.time()
+    if verbose:
+        print(f"Time: {end - start} seconds")
+
     # for guide, data in guides.items():
     #     pos = data["pos"]
     #     print(f"{guide}\t{pos}\t{output[guide]}")
