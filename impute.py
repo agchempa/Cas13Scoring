@@ -12,6 +12,7 @@ from multiprocessing import Pool
 from sklearn.preprocessing import StandardScaler
 from sklearn import svm
 
+from features import features
 
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -27,11 +28,6 @@ DIRECTREPEAT = "aacccctaccaactggtcggggtttgaaac"
 nucleotides = set("actg")
 dinucleotides = set([f"{nuc1}{nuc2}" for nuc1 in nucleotides for nuc2 in nucleotides])
 
-features = ['MFE','DR','Gquad','hybMFE_3.12','hybMFE_15.9' ,
-             'NTdens_max_A','NTdens_max_C','NTdens_max_G','NTdens_max_T','NTdens_max_AT' , 'NTdens_max_GC',
-             'NTdens_min_A' ,  'NTdens_min_G' ,  'NTdens_min_T' , 'NTdens_min_AT' ,
-             'pA','pC','pG',
-             'pAA','pAC','pAG','pAT','pCA','pCC','pCG','pCT','pGA','pGC','pGG','pGT','pTA','pTC','pTG']
 
 def to_json(out_fname, data):
     with open(out_fname, "w") as wopen:
@@ -110,12 +106,11 @@ def update_nucleotide_features(guides):
         features["NTdens_max_T"] = get_frequency(features["flank"][-12:], "t")
 
         features["NTdens_max_AT"] = get_mult_frequency(features["flank"][-12 - 1:-2], ["a", "t"])
-        features["NTdens_max_GC"] = get_mult_frequency(features["flank"][-22 - 1:-14], ["g", "c"])
+        # features["NTdens_max_GC"] = get_mult_frequency(features["flank"][-22 - 1:-14], ["g", "c"])
 
         features["NTdens_min_A"] = get_frequency(features["flank"][-20 - 2:-14 - 1], "a") # verified by hand
-        # features["NTdens_min_C"] = get_frequency(features["flank"][-7:+1 + 1], "c")
         features["NTdens_min_G"] = get_frequency(features["flank"][-13 - 1:-5], "g")
-        features["NTdens_min_T"] = get_frequency(features["flank"][-22 - 1:-13], "t") # verified by hand
+        # features["NTdens_min_T"] = get_frequency(features["flank"][-22 - 1:-13], "t") # verified by hand
 
         features["NTdens_min_AT"] = get_mult_frequency(features["flank"][-21 - 1:-13], ["a", "t"])
 
@@ -182,7 +177,7 @@ def main():
         for idx in range(3, len(seq) - GUIDELENGTH + 1):
             guide = rc(seq[idx: idx + GUIDELENGTH].lower())
             if not include_guide(guide): continue
-            guides[guide] = {"guide": guide, "pos": idx + 1, "flank": seq[idx + GUIDELENGTH - 25: idx + GUIDELENGTH].lower()}
+            guides[guide] = {"guide": guide, "pos": idx + 1, "flank": rc(guide)}
 
     if verbose: print("* Extracting features")
 
